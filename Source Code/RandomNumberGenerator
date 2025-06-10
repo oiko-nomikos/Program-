@@ -1,0 +1,81 @@
+class RandomNumberGenerator {
+public:
+    std::string run() {
+        finalOutput.clear();
+        binaryOutputs.clear();
+
+        for (int i = 0; i < totalIterations; ++i) {
+            long long duration = countdown();
+
+            ++count;
+            globalSum += duration;
+            globalAvg = globalSum / count;
+
+            int bit = duration < globalAvg ? 0 : 1;
+
+            if (localBits.size() >= localBufferSize) {
+                localBits.pop_front();  // Remove oldest bit
+            }
+            localBits.push_back(bit);  // Add new bit
+
+            // Once we have a full 512-bit buffer, hash it
+            if (localBits.size() == localBufferSize) {
+                std::string hashBin = hashLocalBits(); // 256-bit binary digest
+
+                // Store results
+                binaryOutputs.push_back(hashBin);
+
+                // Accumulate binary output
+                finalOutput += hashBin;
+            }
+        }
+
+        std::cout << "\n | Count: " << count << std::endl;
+        std::cout << " | Global Avg: " << globalAvg << " ns\n";
+
+        return finalOutput;
+    }
+
+    const std::vector<std::string>& getBinaryOutputs() const { return binaryOutputs; }
+
+private:
+    SHA256 sha;
+    MetaData metaData;
+    SystemClock systemClock;
+
+    std::deque<int> localBits;
+
+    const int totalIterations    = 1000;
+    const size_t localBufferSize = 512;
+    long long globalSum          = 0;
+    long long globalAvg          = 0;
+    int count                    = 0;
+    int x                        = 10;
+
+    std::string finalOutput;
+
+    std::vector<std::string> binaryOutputs;
+
+    long long countdown() {
+        auto start = systemClock.getNanoseconds();
+        while (x > 0) x--;
+        auto end = systemClock.getNanoseconds();
+        return end - start;
+    }
+
+    std::string hashLocalBits() {
+        std::vector<uint8_t> bytes;
+
+        // Pack bits into bytes
+        for (size_t i = 0; i < localBits.size(); i += 8) {
+            uint8_t byte = 0;
+            for (int j = 0; j < 8 && i + j < localBits.size(); ++j) {
+                byte |= (localBits[i + j] & 1) << (7 - j);
+            }
+            bytes.push_back(byte);
+        }
+
+        sha.update(bytes.data(), bytes.size());
+        return sha.digestBinary(); // 256 bits as "010101..."
+    }
+};
