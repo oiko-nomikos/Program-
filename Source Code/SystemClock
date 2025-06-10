@@ -1,0 +1,23 @@
+class SystemClock {
+public:
+    long long getSeconds() {
+        auto now = std::chrono::system_clock::now();
+        return std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    }
+
+    long long getMilliseconds() {
+        auto now = std::chrono::system_clock::now();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    }
+
+    long long getMicroseconds() {
+        auto now = std::chrono::system_clock::now();
+        return std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+    }
+
+    long long getNanoseconds() {
+        // system_clock typically doesn't support nanosecond precision — this may be fallback.
+        auto now = std::chrono::system_clock::now();
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+    }
+};
