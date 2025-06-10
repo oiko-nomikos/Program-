@@ -1,0 +1,28 @@
+class WordEncoder {
+public:
+    WordEncoder(const WordListManager& manager) : wordList(manager.getWordList()) {}
+
+    std::vector<std::string> binaryToWords(const std::string& binaryStr) {
+        std::vector<std::string> words;
+        
+        for (size_t i = 0; i + 10 < binaryStr.size(); i += 11) {
+            std::string chunk = binaryStr.substr(i, 11);
+            int index = std::stoi(chunk, nullptr, 2);
+
+            if (index < wordList.size()) {
+                words.push_back(wordList[index]);
+            } else {
+                words.push_back("[INVALID]");  // Optional error handling
+            }
+        }
+
+        return words;
+    }
+
+    size_t getWordListSize() const {
+        return wordList.size();
+    }
+
+private:
+    std::vector<std::string> wordList;
+};
