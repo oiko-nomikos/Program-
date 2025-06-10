@@ -1,0 +1,39 @@
+class BinaryEntropyPool {
+public:
+    BinaryEntropyPool() {
+        fillToMinimum();  // Ensure pool starts with 1000 bits
+    }
+
+    std::string get(size_t bitsNeeded) {
+        // Make sure we have enough bits to consume
+        if (bitPool.size() < bitsNeeded) {
+            fillToMinimum(bitsNeeded);  // Emergency top-up
+        }
+
+        // Take `bitsNeeded` from the end
+        std::string consumed = bitPool.substr(bitPool.size() - bitsNeeded, bitsNeeded);
+        bitPool.erase(bitPool.size() - bitsNeeded, bitsNeeded);
+
+        // Refill to minimum again (always keep reserve)
+        fillToMinimum();
+
+        return consumed;
+    }
+
+    size_t poolSize() const {
+        return bitPool.size();
+    }
+
+private:
+    const size_t minPoolSize = 1000;
+    std::string bitPool;
+    RandomNumberGenerator rng;
+
+    void fillToMinimum(size_t additional = 0) {
+        size_t required = minPoolSize + additional;
+        while (bitPool.size() < required) {
+            std::string batch = rng.run();  // Get 256-bit binary string
+            bitPool += batch;
+        }    
+    }
+};
