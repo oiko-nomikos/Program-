@@ -1,0 +1,29 @@
+class SetUUID {
+public:
+    void run() {
+        auto [uuid, _] = uuidGenerator.generateUUID();
+
+        globalDB.addNextDataset(uuid, "pubKeyA", "192.168.1.10", "8080", "hashA");
+        globalDB.addNextDataset("uuid-5678", "pubKeyB", "10.0.0.5", "9090", "hashB");
+        globalDB.addNextDataset("uuid-9999", "pubKeyC", "172.16.0.1", "7070", "hashC");
+
+        const std::vector<std::string> uuidsToTest = {uuid, "uuid-5678"};
+
+        for (const auto& id : uuidsToTest) {
+            const Dataset::DatasetParameters* dp = globalDB.getDataset(id);
+            if (dp) {
+                std::cout << "\nUUID: " << dp->uuid
+                          << "\nPublic Key: " << dp->publicKey
+                          << "\nIP Address: " << dp->ipAddress
+                          << "\nPort Number: " << dp->portNumber
+                          << "\nHash: " << dp->hash << "\n";
+            } else {
+                std::cout << "Dataset with UUID '" << id << "' not found.\n";
+            }
+        }
+    }
+
+private:
+    GlobalDatabase globalDB;
+    GenerateUUID uuidGenerator;
+};
