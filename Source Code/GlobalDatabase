@@ -1,0 +1,18 @@
+class GlobalDatabase {
+public:
+    void addNextDataset(const std::string& uuid,
+                        const std::string& publicKey,
+                        const std::string& ipAddress,
+                        const std::string& portNumber,
+                        const std::string& hash) {
+        Dataset::DatasetParameters dp(uuid, publicKey, ipAddress, portNumber, hash);
+        datasets.setDatasetParameters(dp);
+    }
+
+    const Dataset::DatasetParameters* getDataset(const std::string& uuid) const {
+        return datasets.getDatasetParameters(uuid);
+    }
+
+private:
+    Dataset datasets;
+};
