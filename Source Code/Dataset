@@ -1,0 +1,35 @@
+class Dataset {
+public:
+    struct DatasetParameters {
+        std::string uuid;
+        std::string publicKey;
+        std::string ipAddress;
+        std::string portNumber;
+        std::string hash;
+
+        DatasetParameters() = default;
+
+        DatasetParameters(const std::string& uuid_, const std::string& key,
+                          const std::string& ip, const std::string& port,
+                          const std::string& hash_)
+            : uuid(uuid_), publicKey(key), ipAddress(ip),
+              portNumber(port), hash(hash_) {}
+    };
+
+    // Add or update dataset parameters by UUID
+    void setDatasetParameters(const DatasetParameters& dp) {
+        uuidDataMap[dp.uuid] = dp;
+    }
+
+    // Get pointer to DatasetParameters by UUID or nullptr if not found
+    const DatasetParameters* getDatasetParameters(const std::string& uuid) const {
+        auto it = uuidDataMap.find(uuid);
+        if (it != uuidDataMap.end()) {
+            return &it->second;
+        }
+        return nullptr;
+    }
+
+private:
+    std::unordered_map<std::string, DatasetParameters> uuidDataMap;
+};
