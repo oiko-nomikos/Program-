@@ -1,0 +1,34 @@
+class MetaData {
+public:
+    // Convert binary input to base62 and 8-bit padded binary output
+    std::string binaryToBase62WithPadding(const std::string& binaryStr) {
+        std::string result;
+        std::string paddedBinary;
+
+        for (size_t i = 0; i + 5 < binaryStr.size(); i += 6) {
+            std::string chunk6 = binaryStr.substr(i, 6);
+            int value = std::stoi(chunk6, nullptr, 2);  // 6-bit binary to int
+
+            if (value < 62) {
+                char base62Char = base62[value];
+                result += base62Char;
+
+                std::string paddedChunk = "00" + chunk6; // Add 2-bit leading padding
+                paddedBinary += paddedChunk;
+            }
+        }
+
+        // Optional: Store the padded binary if needed later
+        paddedBits = paddedBinary;
+
+        return result;  // Return the base62-encoded string
+    }
+
+    std::string getPaddedBinary() const {
+        return paddedBits;
+    }
+
+private:
+    std::string paddedBits;
+    const std::string base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+};
