@@ -1,0 +1,11 @@
+class FlowState {   // renamed from FrowState to FlowState
+public:
+    void run() {
+        setMnemonic.run();
+        setUUID.run();   // use instance, not class name!
+    }
+
+private:
+    SetMnemonic setMnemonic;
+    SetUUID setUUID;
+};
