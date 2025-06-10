@@ -1,0 +1,22 @@
+class SetMnemonic {
+public:
+    void run() {
+        std::string mnemonicBits = entropyPool.get(bitsNeeded);
+        std::vector<std::string> words = encoder.binaryToWords(mnemonicBits);
+
+        std::cout << "\n | Word list size: " << encoder.getWordListSize() << "\n";
+        std::cout << "\n | Your " << wordCount << "-word mnemonic phrase:\n";
+        for (const auto& word : words) {
+            std::cout << word << " ";
+        }
+        std::cout << "\n";
+    }
+
+private:
+    WordListManager manager;
+    WordEncoder encoder{manager};
+    BinaryEntropyPool entropyPool;
+
+    const int wordCount = 12;
+    const int bitsNeeded = wordCount * 11;
+};
