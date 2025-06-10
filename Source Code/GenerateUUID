@@ -1,0 +1,51 @@
+class GenerateUUID {
+public:
+    GenerateUUID() : UUIDGenerated(false) {}
+
+    std::pair<std::string, std::string> generateUUID() {
+        std::string timestamp = generateTimestamp();  // 13-digit timestamp
+
+        std::string binary = entropyPool.get(152); // 19 * 8, binary to Base62
+        std::string randomPart = metaData.binaryToBase62WithPadding(binary);
+        std::string fullStr = timestamp + randomPart; // Concatenate
+        
+        std::string UUID = formatUUID(fullStr); // Add hyphens
+
+        if (!UUIDGenerated) {
+            UUIDGenerated = true;
+            firstUUID = UUID;
+            return {firstUUID, firstUUID};
+        } else {
+            lastUUID = UUID;
+            return {firstUUID, lastUUID};
+        }
+    }
+
+private:
+    SystemClock systemClock;
+    RandomNumberGenerator rng;
+    BinaryEntropyPool entropyPool;
+    MetaData metaData;
+
+    bool UUIDGenerated;
+
+    std::string firstUUID;
+    std::string lastUUID;
+
+    std::string generateTimestamp() {
+        return std::to_string(systemClock.getMilliseconds());
+    }
+    
+    std::string formatUUID(const std::string& fullStr) {
+        std::stringstream uuid;
+
+        // Format: 8-4-4-4-12 = 32 characters total
+        uuid << fullStr.substr(0, 8) << "-";
+        uuid << fullStr.substr(8, 4) << "-";
+        uuid << fullStr.substr(12, 4) << "-";
+        uuid << fullStr.substr(16, 4) << "-";
+        uuid << fullStr.substr(20, 12);
+
+        return uuid.str();
+    }
+};
