@@ -1,0 +1,43 @@
+class RSA {
+public:
+    int P1 = 53;
+    int P2 = 59;
+    int n = P1 * P2;
+    int totient = (P1 - 1) * (P2 - 1);
+    int e = 3;
+    int d = (2 * totient + 1) / e;  
+
+    void showKeys() {
+        std::cout << "P1 = " << P1 << "\n";
+        std::cout << "P2 = " << P2 << "\n";
+        std::cout << "n = " << n << "\n";
+        std::cout << "totient = " << totient << "\n";
+        std::cout << "e (public exponent) = " << e << "\n";
+        std::cout << "d (private exponent) = " << d << "\n";
+        std::cout << "Public key (n, e) = (" << n << ", " << e << ")\n";
+        std::cout << "Private key (n, d) = (" << n << ", " << d << ")\n";
+    }
+    
+    std::pair<int, int> getPublicKey() const {
+        return {n, e};
+    }
+
+    std::vector<int> encrypt(const std::string& plaintext) {
+        std::vector<int> encrypted;
+        for (char ch : plaintext) {
+            int m = static_cast<int>(ch);
+            int c = static_cast<int>(std::pow(m, e)) % n;
+            encrypted.push_back(c);
+        }
+        return encrypted;
+    }
+
+    std::string decrypt(const std::vector<int>& ciphertext) {
+        std::string decrypted;
+        for (int c : ciphertext) {
+            int m = static_cast<int>(std::pow(c, d)) % n;
+            decrypted += static_cast<char>(m);
+        }
+        return decrypted;
+    }
+};
