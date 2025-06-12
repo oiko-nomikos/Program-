@@ -1,29 +1,62 @@
 class SetUUID {
 public:
     void run() {
-        auto [uuid, _] = uuidGenerator.generateUUID();
-
-        globalDB.addNextDataset(uuid, "pubKeyA", "192.168.1.10", "8080", "hashA");
-        globalDB.addNextDataset("uuid-5678", "pubKeyB", "10.0.0.5", "9090", "hashB");
-        globalDB.addNextDataset("uuid-9999", "pubKeyC", "172.16.0.1", "7070", "hashC");
-
-        const std::vector<std::string> uuidsToTest = {uuid, "uuid-5678"};
-
-        for (const auto& id : uuidsToTest) {
-            const Dataset::DatasetParameters* dp = globalDB.getDataset(id);
-            if (dp) {
-                std::cout << "\nUUID: " << dp->uuid
-                          << "\nPublic Key: " << dp->publicKey
-                          << "\nIP Address: " << dp->ipAddress
-                          << "\nPort Number: " << dp->portNumber
-                          << "\nHash: " << dp->hash << "\n";
-            } else {
-                std::cout << "Dataset with UUID '" << id << "' not found.\n";
-            }
-        }
+        message();  // Correct function call
     }
 
 private:
     GlobalDatabase globalDB;
     GenerateUUID uuidGenerator;
+    RSA rsa;
+    SHA256 sha;
+    
+    void message() {
+        rsa.showKeys();
+
+        // Step 1: Create UUID
+        auto [uuid, _] = uuidGenerator.generateUUID();
+
+        // Step 2: Create Message
+        std::string message = uuid;
+
+        // Step 3: Create Public Key (unsigned long long)
+        auto [m, e] = rsa.getPublicKey();
+        std::cout << "\nPublic key: (" << m << ", " << e << ")\n";
+
+        // Step 4: Sign Encrypted Message
+        auto signature = rsa.sign(message);
+
+        // Step 5: Return Message and Signature 
+        std::cout << "\nMessage: " << message << "\n";
+        std::cout << "Signature: " << signature << "\n";
+
+        // Step 6: Verify Message
+        bool valid = rsa.verify(message, signature);
+        std::cout << "Verification result: " << (valid ? "Valid" : "Invalid") << "\n";
+
+        // Step 7: Create combined string for hashing
+        std::ostringstream oss;
+        oss << uuid << "|" << message << "|" << signature << "|" << m << "|" << e;
+        std::string combined = oss.str();
+
+        // Step 8: Hash
+        sha.update(combined);
+        std::string hash = sha.digest();
+
+        // Step 9: Store in database — pass m and e directly (unsigned long long)
+        globalDB.addNextDataset(uuid, message, std::to_string(signature), std::to_string(m), std::to_string(e), "127.0.0.1", "8080", hash);
+
+        // Step 10: Output
+        const auto* data = globalDB.getDataset(uuid);
+        if (data) {
+            std::cout << "\n--- Dataset Information ---\n";
+            std::cout << "UUID: " << data->uuid << "\n";
+            std::cout << "Message: " << data->message << "\n";
+            std::cout << "Signature: " << data->signature << "\n";
+            std::cout << "Public Key (n): " << data->modulus << "\n";
+            std::cout << "Public Key (e): " << data->exponent << "\n";
+            std::cout << "IP: " << data->ipAddress << ", Port: " << data->portNumber << "\n";
+            std::cout << "Hash: " << data->hash << "\n";
+        }
+    }
 };
