@@ -40,4 +40,40 @@ public:
         }
         return decrypted;
     }
+
+    // Modular exponentiation
+    static unsigned long long modExp(unsigned long long base, unsigned long long exp, unsigned long long mod) {
+        unsigned long long result = 1;
+        base %= mod;
+        while (exp > 0) {
+            if (exp & 1) result = (result * base) % mod;
+            base = (base * base) % mod;
+            exp >>= 1;
+        }
+        return result;
+    }
+
+    // Convert hex to integer (64-bit truncation for small n)
+    static unsigned long long hexToInt64(const std::string& hex) {
+        return std::stoull(hex.substr(0, 16), nullptr, 16);
+    }
+
+    // Sign a message: hash it, then encrypt the hash with private key (d)
+    unsigned long long sign(const std::string& message) {
+        SHA256 sha;
+        sha.update(message);
+        std::string hashHex = sha.digest();
+        unsigned long long hashInt = hexToInt64(hashHex);
+        return modExp(hashInt, d, n);
+    }
+
+    // Verify a signature: hash message, decrypt signature using public key (e), compare hashes
+    bool verify(const std::string& message, unsigned long long signature) {
+        SHA256 sha;
+        sha.update(message);
+        std::string expectedHashHex = sha.digest();
+        unsigned long long expectedHashInt = hexToInt64(expectedHashHex);
+        unsigned long long verifiedHash = modExp(signature, e, n);
+        return verifiedHash == expectedHashInt;
+    }
 };
