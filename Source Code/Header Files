@@ -2,13 +2,14 @@
 #include <vector>       // For std::vector — used to build byte arrays from bit sequences
 #include <sstream>      // For std::ostringstream — used to format the hash output as hex
 #include <iomanip>      // For std::setw, std::setfill, std::hex — used to format hex output
-#include <cstring>      // For std::memcpy, std::memset — could be used for low-level byte operations
+#include <cstring>      // For std::memcpy, std::memset — used for low-level byte operations
 #include <cstdint>      // For fixed-width types like uint8_t, uint32_t, uint64_t — needed for SHA-256
 #include <cctype>       // For std::tolower — used to convert hex characters for binary digest
 #include <deque>        // For std::deque — used to store the 512-bit local entropy buffer
 #include <chrono>       // For high-resolution timing — used to generate entropy via timing measurements
-#include <string>
-#include <random>
-#include <vector>
-#include <utility>
-#include <thread>
+#include <string>       // For std::string — used for textual manipulation and formatting
+#include <random>       // For std::random_device, std::mt19937 — used for fallback or test RNGs
+#include <utility>      // For std::move, std::pair — used for efficient value transfers and paired returns
+#include <thread>       // For std::this_thread::sleep_for — used for intentional delays or pacing
+#include <unordered_map>// For std::unordered_map — used for fast key-value lookups, e.g., in wordlists
+#include <cmath>        // For std::log2, std::ceil — used in entropy estimation and bit calculation logic
