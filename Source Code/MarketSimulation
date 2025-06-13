@@ -1,0 +1,527 @@
+#include <vector>
+#include <string>
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+#include <chrono>     
+#include <thread>     
+#include <algorithm>  
+#include <cstdlib>    
+#include <ctime>      
+
+std::vector<double> filledOrderPrices;
+
+class PriceFeed {
+public:
+    double getCurrentPrice() {
+        // Simulate price around 50k +/- 500
+        return 50000.0 + (rand() % 1000 - 500);
+    }
+};
+
+class Trader {
+public:
+    enum TradeState { BUY, SELL };
+    TradeState currentState = BUY;
+
+    struct Parameters {
+        enum Type { BUY, SELL } type;
+        double price = 0.0;
+        double amount = 0.0001;
+        bool filled = false;
+
+        static constexpr int increment    = 100;
+        static constexpr int delayHours   = 8;    // delay before buying again at same price
+        static constexpr int spotOrders   = 50;
+        std::string pairSymbol = "BTC-USD";
+    };
+
+    struct TradingPairs {
+        std::string BTC_USD = "BTC-USD";
+        std::string BTC_GBP = "BTC-GBP";
+        std::string BTC_EUR = "BTC-EUR";
+        std::string BTC_CAD = "BTC-CAD";
+    };
+
+    struct Position {
+        double price;
+        std::chrono::system_clock::time_point filledTime;
+    };
+
+    Trader() {
+        srand(static_cast<unsigned int>(time(nullptr)));
+    }
+    
+    void start() {
+        config.pairSymbol = pairs.BTC_USD;
+        lastPrice = 0.0;
+
+        while (true) {
+            currentPrice = priceFeed.getCurrentPrice();
+            std::cout << "Current price for " << config.pairSymbol << ": $" << currentPrice << "\n";
+
+            updateFilledOrders();
+            printSummary();
+
+            // Clear old ladder orders
+            openOrders.clear();
+
+            placeNewOrders();
+        }
+    }
+
+    void placeNewOrders() {
+        // Place new ladder orders if room
+        int remainingOrders = Parameters::spotOrders - static_cast<int>(filledPositions.size());
+        if (remainingOrders > 0) {
+            placeLadderOrders(currentPrice, remainingOrders);
+        } else {
+            std::cout << "Max spot orders reached (" << Parameters::spotOrders << "), not placing more.\n";
+        }
+
+        std::cout << "Open orders: " << getOpenOrdersCount() << "\n";
+        std::cout << "Filled orders: " << getFilledOrdersCount() << "\n";
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(refreshIntervalMs));
+    }
+
+    void printSummary() {
+        // Print summary of filled orders
+        if (!filledOrderPrices.empty()) {
+            std::cout << "\n---------------- FILLED ORDERS ----------------\n";
+
+            // Sort a copy of filled orders in descending order
+            std::vector<double> sortedPrices = filledOrderPrices;
+            std::sort(sortedPrices.begin(), sortedPrices.end(), std::greater<double>());
+
+            for (const double& price : sortedPrices)
+                std::cout << std::fixed << std::setprecision(2) << price << std::endl;
+
+            // Compute average
+            double total = 0;
+            for (double price : filledOrderPrices) total += price;
+            double average = total / filledOrderPrices.size();
+            double delta = currentPrice - average;
+            double percentageAbove = (delta / average) * 100.0;
+
+            std::string status = (delta > 0) ? "ABOVE AVERAGE" : "BELOW AVERAGE";
+
+            std::cout << "Average Fill Price: " << std::fixed << std::setprecision(2) << average << std::endl;
+            std::cout << "Current Price:      " << std::fixed << std::setprecision(2) << currentPrice << std::endl;
+            std::cout << "Status:             " << status << " (By " << std::abs(delta) << " / " << std::fixed << std::setprecision(2) << std::abs(percentageAbove) << "%)\n";
+            std::cout << "Total Realized Profit:  $" << std::fixed << std::setprecision(2) << totalRealizedProfit << "\n";
+
+            // 🔥 Auto-sell logic
+            if (percentageAbove >= 0.5) {
+                double profitFromThisSell = 0.0;
+                for (const auto& pos : filledPositions) {
+                    double profit = (currentPrice - pos.price) * config.amount;
+                    profitFromThisSell += profit;
+                }
+
+                totalRealizedProfit += profitFromThisSell; // 👈 accumulate
+
+                std::cout << "\n🚀 SELLING ALL POSITIONS at $" << currentPrice << " (0.5%+ above average)\n";
+                std::cout << "Profit from this Sale:  $" << std::fixed << std::setprecision(2) << profitFromThisSell << "\n";
+                std::cout << "Total Realized Profit:  $" << std::fixed << std::setprecision(2) << totalRealizedProfit << "\n";
+
+                // Reset for next cycle
+                filledPositions.clear();
+                filledOrderPrices.clear();
+
+                std::cout << "All filled positions cleared. Resuming buy strategy...\n";
+            }
+            std::cout << "------------------------------------------------\n";
+        }
+    }
+        
+    void updateFilledOrders() {
+        // Update filled orders and add their prices to filledOrderPrices
+        for (auto& order : openOrders) {
+            if (!order.filled && order.type == Parameters::BUY && currentPrice <= order.price) {
+                order.filled = true;
+                filledPositions.push_back({order.price, std::chrono::system_clock::now()});
+
+                // Record price to global filledOrderPrices vector
+                filledOrderPrices.push_back(order.price);
+
+                std::cout << "Order filled at $" << order.price << "\n";
+            }
+        }
+    }
+
+    int getOpenOrdersCount() const {
+        return static_cast<int>(openOrders.size());
+    }
+
+    int getFilledOrdersCount() const {
+        return static_cast<int>(filledPositions.size());
+    }
+
+    // Public setters to allow main() to configure private members
+    void setPairSymbol(const std::string& symbol) {
+        config.pairSymbol = symbol;
+    }
+
+    void setTradeState(TradeState state) {
+        currentState = state;
+    }
+
+    std::string getPairSymbol() const {
+        return config.pairSymbol;
+    }
+
+    // Expose TradingPairs read-only for convenience
+    const TradingPairs& getPairs() const {
+        return pairs;
+    }
+
+private:
+    PriceFeed priceFeed;
+    Parameters config;
+    TradingPairs pairs;
+
+    double lastPrice            = 0.0;
+    double currentPrice         = 0.0;
+    double totalRealizedProfit  = 0.0;
+    const int refreshIntervalMs = 3000;
+
+    std::vector<Parameters> openOrders;
+    std::vector<Position> filledPositions;
+
+    void placeLadderOrders(double currentPrice, int numOrders) {
+        int ordersPlacedThisRound = 0;
+
+        for (int i = 0; i < numOrders; ++i) {
+            double price = (currentState == BUY)
+                ? currentPrice - Parameters::increment * (i + 1)
+                : currentPrice + Parameters::increment * (i + 1);
+
+            if (isOrderOpenAtPrice(price)) {
+                continue;
+            }
+
+            if (!canPlaceOrderAtPrice(price)) {
+                std::cout << "Skipping order at $" << price << " due to delay restriction.\n";
+                continue;
+            }
+
+            Parameters order;
+            order.type = (currentState == BUY) ? Parameters::BUY : Parameters::SELL;
+            order.price = price;
+            order.amount = config.amount;
+            order.pairSymbol = config.pairSymbol;
+            order.filled = false;
+
+            openOrders.push_back(order);
+            ++ordersPlacedThisRound;
+
+            std::cout << (order.type == Parameters::BUY ? "BUY " : "SELL ")
+                      << order.pairSymbol << " at $" << order.price
+                      << " for " << order.amount << " BTC\n";
+        }
+
+        if (ordersPlacedThisRound > 0) {
+            std::cout << "Placed " << ordersPlacedThisRound << " new ladder orders.\n";
+        } else {
+            std::cout << "No new ladder orders placed this round.\n";
+        }
+
+        lastPrice = currentPrice;
+    }
+
+    bool isOrderOpenAtPrice(double price) {
+        for (const auto& order : openOrders) {
+            if (!order.filled && order.price == price) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void updateFilledOrders(double currentPrice) {
+    for (auto& order : openOrders) {
+        if (!order.filled && order.type == Parameters::BUY && currentPrice <= order.price) {
+            order.filled = true;
+            filledPositions.push_back({order.price, std::chrono::system_clock::now()});
+            std::cout << "Order filled at $" << order.price << "\n";
+        }
+    }
+}
+
+    bool canPlaceOrderAtPrice(double price) {
+        auto now = std::chrono::system_clock::now();
+        for (const auto& pos : filledPositions) {
+#include <vector>
+#include <string>
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+#include <chrono>     // <-- REQUIRED for std::chrono
+#include <thread>     // <-- REQUIRED for std::this_thread::sleep_for
+#include <algorithm>  // <-- REQUIRED for std::sort, std::greater
+#include <cstdlib>    // <-- REQUIRED for rand()
+#include <ctime>      // <-- REQUIRED for time()
+
+std::vector<double> filledOrderPrices;
+
+class PriceFeed {
+public:
+    double getCurrentPrice() {
+        // Simulate price around 50k +/- 500
+        return 50000.0 + (rand() % 1000 - 500);
+    }
+};
+
+class Trader {
+public:
+    enum TradeState { BUY, SELL };
+    TradeState currentState = BUY;
+
+    struct Parameters {
+        enum Type { BUY, SELL } type;
+        double price = 0.0;
+        double amount = 0.0001;
+        bool filled = false;
+
+        static constexpr int increment    = 100;
+        static constexpr int delayHours   = 8;    // delay before buying again at same price
+        static constexpr int spotOrders   = 50;
+        std::string pairSymbol = "BTC-USD";
+    };
+
+    struct TradingPairs {
+        std::string BTC_USD = "BTC-USD";
+        std::string BTC_GBP = "BTC-GBP";
+        std::string BTC_EUR = "BTC-EUR";
+        std::string BTC_CAD = "BTC-CAD";
+    };
+
+    struct Position {
+        double price;
+        std::chrono::system_clock::time_point filledTime;
+    };
+
+    Trader() {
+        srand(static_cast<unsigned int>(time(nullptr)));
+    }
+    
+    void start() {
+        config.pairSymbol = pairs.BTC_USD;
+        lastPrice = 0.0;
+
+        while (true) {
+            currentPrice = priceFeed.getCurrentPrice();
+            std::cout << "Current price for " << config.pairSymbol << ": $" << currentPrice << "\n";
+
+            updateFilledOrders();
+            printSummary();
+
+            // Clear old ladder orders
+            openOrders.clear();
+
+            placeNewOrders();
+        }
+    }
+
+    void placeNewOrders() {
+        // Place new ladder orders if room
+        int remainingOrders = Parameters::spotOrders - static_cast<int>(filledPositions.size());
+        if (remainingOrders > 0) {
+            placeLadderOrders(currentPrice, remainingOrders);
+        } else {
+            std::cout << "Max spot orders reached (" << Parameters::spotOrders << "), not placing more.\n";
+        }
+
+        std::cout << "Open orders: " << getOpenOrdersCount() << "\n";
+        std::cout << "Filled orders: " << getFilledOrdersCount() << "\n";
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(refreshIntervalMs));
+    }
+
+    void printSummary() {
+        // Print summary of filled orders
+        if (!filledOrderPrices.empty()) {
+            std::cout << "\n---------------- FILLED ORDERS ----------------\n";
+
+            // Sort a copy of filled orders in descending order
+            std::vector<double> sortedPrices = filledOrderPrices;
+            std::sort(sortedPrices.begin(), sortedPrices.end(), std::greater<double>());
+
+            for (const double& price : sortedPrices)
+                std::cout << std::fixed << std::setprecision(2) << price << std::endl;
+
+            // Compute average
+            double total = 0;
+            for (double price : filledOrderPrices) total += price;
+            double average = total / filledOrderPrices.size();
+            double delta = currentPrice - average;
+            double percentageAbove = (delta / average) * 100.0;
+
+            std::string status = (delta > 0) ? "ABOVE AVERAGE" : "BELOW AVERAGE";
+
+            std::cout << "Average Fill Price: " << std::fixed << std::setprecision(2) << average << std::endl;
+            std::cout << "Current Price:      " << std::fixed << std::setprecision(2) << currentPrice << std::endl;
+            std::cout << "Status:             " << status << " (By " << std::abs(delta) << " / " << std::fixed << std::setprecision(2) << std::abs(percentageAbove) << "%)\n";
+            std::cout << "Total Realized Profit:  $" << std::fixed << std::setprecision(2) << totalRealizedProfit << "\n";
+
+            // 🔥 Auto-sell logic
+            if (percentageAbove >= 0.5) {
+                double profitFromThisSell = 0.0;
+                for (const auto& pos : filledPositions) {
+                    double profit = (currentPrice - pos.price) * config.amount;
+                    profitFromThisSell += profit;
+                }
+
+                totalRealizedProfit += profitFromThisSell; // 👈 accumulate
+
+                std::cout << "\n🚀 SELLING ALL POSITIONS at $" << currentPrice << " (0.5%+ above average)\n";
+                std::cout << "Profit from this Sale:  $" << std::fixed << std::setprecision(2) << profitFromThisSell << "\n";
+                std::cout << "Total Realized Profit:  $" << std::fixed << std::setprecision(2) << totalRealizedProfit << "\n";
+
+                // Reset for next cycle
+                filledPositions.clear();
+                filledOrderPrices.clear();
+
+                std::cout << "All filled positions cleared. Resuming buy strategy...\n";
+            }
+            std::cout << "------------------------------------------------\n";
+        }
+    }
+        
+    void updateFilledOrders() {
+        // Update filled orders and add their prices to filledOrderPrices
+        for (auto& order : openOrders) {
+            if (!order.filled && order.type == Parameters::BUY && currentPrice <= order.price) {
+                order.filled = true;
+                filledPositions.push_back({order.price, std::chrono::system_clock::now()});
+
+                // Record price to global filledOrderPrices vector
+                filledOrderPrices.push_back(order.price);
+
+                std::cout << "Order filled at $" << order.price << "\n";
+            }
+        }
+    }
+
+    int getOpenOrdersCount() const {
+        return static_cast<int>(openOrders.size());
+    }
+
+    int getFilledOrdersCount() const {
+        return static_cast<int>(filledPositions.size());
+    }
+
+    // Public setters to allow main() to configure private members
+    void setPairSymbol(const std::string& symbol) {
+        config.pairSymbol = symbol;
+    }
+
+    void setTradeState(TradeState state) {
+        currentState = state;
+    }
+
+    std::string getPairSymbol() const {
+        return config.pairSymbol;
+    }
+
+    // Expose TradingPairs read-only for convenience
+    const TradingPairs& getPairs() const {
+        return pairs;
+    }
+
+private:
+    PriceFeed priceFeed;
+    Parameters config;
+    TradingPairs pairs;
+
+    double lastPrice            = 0.0;
+    double currentPrice         = 0.0;
+    double totalRealizedProfit  = 0.0;
+    const int refreshIntervalMs = 3000;
+
+    std::vector<Parameters> openOrders;
+    std::vector<Position> filledPositions;
+
+    void placeLadderOrders(double currentPrice, int numOrders) {
+        int ordersPlacedThisRound = 0;
+
+        for (int i = 0; i < numOrders; ++i) {
+            double price = (currentState == BUY)
+                ? currentPrice - Parameters::increment * (i + 1)
+                : currentPrice + Parameters::increment * (i + 1);
+
+            if (isOrderOpenAtPrice(price)) {
+                continue;
+            }
+
+            if (!canPlaceOrderAtPrice(price)) {
+                std::cout << "Skipping order at $" << price << " due to delay restriction.\n";
+                continue;
+            }
+
+            Parameters order;
+            order.type = (currentState == BUY) ? Parameters::BUY : Parameters::SELL;
+            order.price = price;
+            order.amount = config.amount;
+            order.pairSymbol = config.pairSymbol;
+            order.filled = false;
+
+            openOrders.push_back(order);
+            ++ordersPlacedThisRound;
+
+            std::cout << (order.type == Parameters::BUY ? "BUY " : "SELL ")
+                      << order.pairSymbol << " at $" << order.price
+                      << " for " << order.amount << " BTC\n";
+        }
+
+        if (ordersPlacedThisRound > 0) {
+            std::cout << "Placed " << ordersPlacedThisRound << " new ladder orders.\n";
+        } else {
+            std::cout << "No new ladder orders placed this round.\n";
+        }
+
+        lastPrice = currentPrice;
+    }
+
+    bool isOrderOpenAtPrice(double price) {
+        for (const auto& order : openOrders) {
+            if (!order.filled && order.price == price) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void updateFilledOrders(double currentPrice) {
+        for (auto& order : openOrders) {
+            if (!order.filled && order.type == Parameters::BUY && currentPrice <= order.price) {
+                order.filled = true;
+                filledPositions.push_back({order.price, std::chrono::system_clock::now()});
+                std::cout << "Order filled at $" << order.price << "\n";
+            }
+        }
+    }
+
+    bool canPlaceOrderAtPrice(double price) {
+        auto now = std::chrono::system_clock::now();
+        for (const auto& pos : filledPositions) {
+            auto hoursSinceFilled =
+                std::chrono::duration_cast<std::chrono::hours>(now - pos.filledTime).count();
+            if (pos.price == price && hoursSinceFilled < Parameters::delayHours) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+int main() {
+    Trader trader;
+    trader.setTradeState(Trader::BUY);
+    trader.setPairSymbol(trader.getPairs().BTC_GBP);
+
+    trader.start();
+
+    return 0;
+}
