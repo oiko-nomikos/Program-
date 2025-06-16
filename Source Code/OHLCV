@@ -1,0 +1,219 @@
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <iomanip>
+
+// Example hardcoded CSV-style data
+const std::vector<std::string> rawPriceData = {
+    "\"Jun 16, 2025\",\"107,071.3\",\"105,594.0\",\"107,229.9\",\"104,993.8\",\"33.12K\",\"+1.40%\"",
+    "\"Jun 15, 2025\",\"105,591.8\",\"105,421.6\",\"106,098.9\",\"104,502.0\",\"26.22K\",\"+0.16%\"",
+    "\"Jun 14, 2025\",\"105,421.5\",\"106,028.5\",\"106,196.9\",\"104,321.0\",\"30.99K\",\"-0.62%\"",
+    "\"Jun 13, 2025\",\"106,080.3\",\"105,702.7\",\"106,147.0\",\"102,739.6\",\"73.84K\",\"+0.36%\"",
+    "\"Jun 12, 2025\",\"105,703.0\",\"108,662.2\",\"108,776.2\",\"105,703.0\",\"59.87K\",\"-2.72%\"",
+    "\"Jun 11, 2025\",\"108,661.2\",\"110,269.2\",\"110,386.1\",\"108,081.9\",\"44.80K\",\"-1.46%\"",
+    "\"Jun 10, 2025\",\"110,269.2\",\"110,268.3\",\"110,369.2\",\"108,380.6\",\"58.28K\",\"0.00%\"",
+    "\"Jun 09, 2025\",\"110,268.3\",\"105,739.6\",\"110,404.9\",\"105,333.3\",\"64.28K\",\"+4.28%\"",
+    "\"Jun 08, 2025\",\"105,739.6\",\"105,564.2\",\"106,449.3\",\"105,011.6\",\"29.11K\",\"+0.17%\"",
+    "\"Jun 07, 2025\",\"105,564.2\",\"104,308.3\",\"105,911.7\",\"103,911.0\",\"32.39K\",\"+1.20%\"",
+    "\"Jun 06, 2025\",\"104,308.3\",\"101,524.1\",\"105,306.5\",\"101,127.6\",\"61.97K\",\"+2.74%\"",
+    "\"Jun 05, 2025\",\"101,521.9\",\"104,690.6\",\"105,914.4\",\"100,421.1\",\"73.53K\",\"-3.03%\"",
+    "\"Jun 04, 2025\",\"104,695.6\",\"105,383.5\",\"105,971.2\",\"104,224.0\",\"50.06K\",\"-0.66%\"",
+    "\"Jun 03, 2025\",\"105,388.3\",\"105,845.6\",\"106,758.4\",\"104,886.9\",\"49.47K\",\"-0.43%\"",
+    "\"Jun 02, 2025\",\"105,845.6\",\"105,635.2\",\"105,930.7\",\"103,729.7\",\"46.44K\",\"+0.20%\"",
+    "\"Jun 01, 2025\",\"105,635.2\",\"104,598.0\",\"105,867.5\",\"103,768.6\",\"33.03K\",\"+0.99%\"",
+    "\"May 31, 2025\",\"104,598.0\",\"103,981.9\",\"104,888.4\",\"103,091.3\",\"35.80K\",\"+0.59%\"",
+    "\"May 30, 2025\",\"103,981.3\",\"105,598.8\",\"106,314.9\",\"103,693.9\",\"71.98K\",\"-1.53%\"",
+    "\"May 29, 2025\",\"105,600.0\",\"107,759.1\",\"108,896.7\",\"105,399.9\",\"70.02K\",\"-2.03%\"",
+    "\"May 28, 2025\",\"107,786.7\",\"108,905.7\",\"109,238.3\",\"106,804.9\",\"51.84K\",\"-1.06%\"",
+    "\"May 27, 2025\",\"108,944.0\",\"109,455.3\",\"110,718.7\",\"107,572.2\",\"65.02K\",\"-0.47%\"",
+    "\"May 26, 2025\",\"109,455.3\",\"109,014.9\",\"110,401.4\",\"108,694.0\",\"48.01K\",\"+0.40%\"",
+    "\"May 25, 2025\",\"109,021.1\",\"107,763.0\",\"109,203.4\",\"106,648.3\",\"52.49K\",\"+1.17%\"",
+    "\"May 24, 2025\",\"107,763.0\",\"107,313.5\",\"109,476.4\",\"106,904.5\",\"52.26K\",\"+0.42%\"",
+    "\"May 23, 2025\",\"107,313.4\",\"111,702.6\",\"111,778.7\",\"106,855.4\",\"87.57K\",\"-3.93%\"",
+    "\"May 22, 2025\",\"111,702.7\",\"109,632.6\",\"111,953.6\",\"109,281.8\",\"96.35K\",\"+1.88%\"",
+    "\"May 21, 2025\",\"109,640.1\",\"106,814.7\",\"110,628.8\",\"106,109.5\",\"124.17K\",\"+2.64%\"",
+    "\"May 20, 2025\",\"106,815.8\",\"105,586.1\",\"107,270.5\",\"104,199.3\",\"76.08K\",\"+1.16%\"",
+    "\"May 19, 2025\",\"105,585.8\",\"106,507.7\",\"107,081.3\",\"102,088.2\",\"90.49K\",\"-0.86%\"",
+    "\"May 18, 2025\",\"106,504.5\",\"103,113.9\",\"106,577.0\",\"103,113.9\",\"62.47K\",\"+3.29%\"",
+    "\"May 17, 2025\",\"103,112.6\",\"103,473.9\",\"103,712.3\",\"102,626.5\",\"37.43K\",\"-0.36%\"",
+    "\"May 16, 2025\",\"103,480.5\",\"103,764.6\",\"104,544.1\",\"103,126.5\",\"53.27K\",\"-0.27%\""
+};
+
+struct OHLCVEntry {
+    std::string date;
+    double open;
+    double high;
+    double low;
+    double close;
+    double volume;
+};
+
+
+class OHLCV {
+public:
+    std::string removeCommas(const std::string& input) {
+        std::string output;
+        for (char c : input) {
+            if (c != ',') output += c;
+        }
+        return output;
+    }
+
+    std::vector<OHLCVEntry> parseData(const std::vector<std::string>& data) {
+        std::vector<OHLCVEntry> result;
+
+        for (const std::string& line : data) {
+            std::stringstream ss(line);
+            std::string token;
+            std::vector<std::string> fields;
+
+            while (std::getline(ss, token, ',')) {
+                // Merge if quotes aren't closed
+                while (!token.empty() && token.front() == '"' && token.back() != '"') {
+                    std::string next;
+                    std::getline(ss, next, ',');
+                    token += "," + next;
+                }
+
+                // Remove quotes
+                token.erase(std::remove(token.begin(), token.end(), '\"'), token.end());
+
+                fields.push_back(token);
+            }
+
+            if (fields.size() >= 6) {
+                try {
+                    OHLCVEntry entry;
+                    entry.date = fields[0];
+                    entry.open = std::stod(removeCommas(fields[1]));
+                    entry.high = std::stod(removeCommas(fields[2]));
+                    entry.low = std::stod(removeCommas(fields[3]));
+                    entry.close = std::stod(removeCommas(fields[4]));
+
+                    std::string volStr = fields[5];
+                    double multiplier = 1.0;
+                    if (!volStr.empty() && volStr.back() == 'K') {
+                        multiplier = 1000.0;
+                        volStr.pop_back();
+                    } else if (!volStr.empty() && volStr.back() == 'M') {
+                        multiplier = 1'000'000.0;
+                        volStr.pop_back();
+                    }
+
+                    entry.volume = std::stod(removeCommas(volStr)) * multiplier;
+                    result.push_back(entry);
+                } catch (...) {
+                    std::cerr << "Invalid line or number format.\n";
+                }
+            }
+        }
+
+        std::reverse(result.begin(), result.end()); // oldest to newest
+        return result;
+    }
+
+    static std::string formatWithCommas(double value) {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(1) << value;  // one decimal place
+
+        std::string numStr = oss.str();
+        std::string intPart, fracPart;
+        size_t dotPos = numStr.find('.');
+
+        if (dotPos != std::string::npos) {
+            intPart = numStr.substr(0, dotPos);
+            fracPart = numStr.substr(dotPos);  // include '.'
+        } else {
+            intPart = numStr;
+            fracPart = "";
+        }
+
+        // Insert commas into intPart from right to left every 3 digits
+        std::string withCommas;
+        int count = 0;
+        for (int i = (int)intPart.size() - 1; i >= 0; --i) {
+            withCommas.insert(withCommas.begin(), intPart[i]);
+            count++;
+            if (count == 3 && i != 0) {
+                withCommas.insert(withCommas.begin(), ',');
+                count = 0;
+            }
+        }
+
+        return withCommas + fracPart;
+    }
+};
+
+class OHLCVData {
+public:
+    std::vector<OHLCVEntry> entries;
+
+    OHLCVData(const std::vector<OHLCVEntry>& e) : entries(e) {}
+
+    std::vector<std::string> getOpen() const {
+        std::vector<std::string> result;
+        for (const auto& e : entries)
+            result.push_back(OHLCV::formatWithCommas(e.open));
+        return result;
+    }
+
+    std::vector<std::string> getHigh() const {
+        std::vector<std::string> result;
+        for (const auto& e : entries)
+            result.push_back(OHLCV::formatWithCommas(e.high));
+        return result;
+    }
+
+    std::vector<std::string> getLow() const {
+        std::vector<std::string> result;
+        for (const auto& e : entries)
+            result.push_back(OHLCV::formatWithCommas(e.low));
+        return result;
+    }
+
+    std::vector<std::string> getClose() const {
+        std::vector<std::string> result;
+        for (const auto& e : entries)
+            result.push_back(OHLCV::formatWithCommas(e.close));
+        return result;
+    }
+
+    std::vector<std::string> getVolume() const {
+        std::vector<std::string> result;
+        for (const auto& e : entries)
+            result.push_back(OHLCV::formatWithCommas(e.volume));
+        return result;
+    }
+};
+
+int main() {
+    OHLCV parser;
+    std::vector<OHLCVEntry> parsedEntries = parser.parseData(rawPriceData);
+
+    OHLCVData OHLCV(parsedEntries);
+
+    auto opens = OHLCV.getOpen();
+    std::cout << "Open prices:\n";
+    for (const std::string& o : opens) std::cout << o << "\n";
+
+    auto highs = OHLCV.getHigh();
+    std::cout << "\nHigh prices:\n";
+    for (const std::string& h : highs) std::cout << h << "\n";
+
+    auto lows = OHLCV.getLow();
+    std::cout << "\nLow prices:\n";
+    for (const std::string& l : lows) std::cout << l << "\n";
+    
+    auto closes = OHLCV.getClose();
+    std::cout << "\nClose prices:\n";
+    for (const std::string& c : closes) std::cout << c << "\n";
+
+    auto volumes = OHLCV.getVolume();
+    std::cout << "\nVolumes:\n";
+    for (const std::string& v : volumes) std::cout << v << "\n";
+
+    return 0;
+}
