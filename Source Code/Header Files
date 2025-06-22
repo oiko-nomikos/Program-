@@ -1,15 +1,40 @@
-#include <iostream>     // For std::cout, std::endl — used for printing output to console
-#include <vector>       // For std::vector — used to build byte arrays from bit sequences
-#include <sstream>      // For std::ostringstream — used to format the hash output as hex
-#include <iomanip>      // For std::setw, std::setfill, std::hex — used to format hex output
-#include <cstring>      // For std::memcpy, std::memset — used for low-level byte operations
-#include <cstdint>      // For fixed-width types like uint8_t, uint32_t, uint64_t — needed for SHA-256
-#include <cctype>       // For std::tolower — used to convert hex characters for binary digest
-#include <deque>        // For std::deque — used to store the 512-bit local entropy buffer
-#include <chrono>       // For high-resolution timing — used to generate entropy via timing measurements
-#include <string>       // For std::string — used for textual manipulation and formatting
-#include <random>       // For std::random_device, std::mt19937 — used for fallback or test RNGs
-#include <utility>      // For std::move, std::pair — used for efficient value transfers and paired returns
-#include <thread>       // For std::this_thread::sleep_for — used for intentional delays or pacing
-#include <unordered_map>// For std::unordered_map — used for fast key-value lookups, e.g., in wordlists
-#include <cmath>        // For std::log2, std::ceil — used in entropy estimation and bit calculation logic
+// === Core C++ Input/Output and Strings ===
+#include <iostream>       // std::cout, std::cin — console I/O
+#include <iomanip>        // std::setw, std::setprecision — formatted output
+#include <string>         // std::string — string handling
+#include <sstream>        // std::stringstream — string formatting and parsing
+#include <fstream>        // std::ifstream, std::ofstream — file I/O
+
+// === Containers and Data Structures ===
+#include <vector>         // std::vector — dynamic arrays
+#include <deque>          // std::deque — double-ended queues (used for entropy pools)
+#include <queue>          // std::queue — FIFO data structures
+#include <map>            // std::map — ordered key-value storage
+#include <unordered_map>  // std::unordered_map — hash-based key-value storage
+#include <utility>        // std::pair, std::move — efficient value operations
+#include <algorithm>      // std::sort, std::find — algorithms for containers
+
+// === Numeric and Math Utilities ===
+#include <cmath>          // std::ceil, std::log2 — math functions
+#include <cstdlib>        // std::rand, std::srand — general utilities
+#include <ctime>          // std::time, time_t — time-based RNG seeding
+#include <random>         // std::mt19937, std::random_device — RNG and distributions
+#include <cstdint>        // uint8_t, uint32_t, etc. — fixed-width integer types
+
+// === Low-level Memory and Character Handling ===
+#include <cstring>        // std::memset, std::memcpy — raw memory operations
+#include <cctype>         // std::tolower, std::isdigit — character classification
+
+// === Multithreading and Synchronization ===
+#include <thread>              // std::thread, std::this_thread::sleep_for
+#include <mutex>               // std::mutex — mutual exclusion
+#include <condition_variable>  // std::condition_variable — thread signaling
+#include <atomic>              // std::atomic — thread-safe variables
+#include <functional>          // std::function, lambdas — functional programming tools
+
+// === Timing and Delays ===
+#include <chrono>         // std::chrono::high_resolution_clock — precise timing
+
+// === Terminal and System Headers (Unix-specific) ===
+#include <termios.h>      // Terminal settings (e.g., for input without Enter key)
+#include <unistd.h>       // POSIX API (e.g., read, sleep)
